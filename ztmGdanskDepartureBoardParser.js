@@ -1,5 +1,5 @@
 var ztmGdanskDepartureBoardParser = {
-    setDepartureBoard: function (divTableId, stopId, stopName) {
+    setDepartureBoard: function (divTableId, stopId, stopName, displayCode) {
 
         $.getJSON("https://ckan2.multimediagdansk.pl/delays?stopId=" + stopId, function (result) {
             if (typeof result.error !== 'undefined') {
@@ -59,8 +59,6 @@ var ztmGdanskDepartureBoardParser = {
 
                 // Creating TIMES rows
                 var div2 = document.createElement('div');
-                div2.style.height = "500px";
-                div2.style.overflow = "auto";
 
                 var tb3 = document.createElement('table');
                 tb3.id = "timesDeparturesBoard";
@@ -81,8 +79,7 @@ var ztmGdanskDepartureBoardParser = {
                     th = tr.insertCell();
                     th.className = "time";
                     span = document.createElement('span');
-                    if (result.delay[index].status === "REALTIME")
-                    {
+                    if (result.delay[index].status === "REALTIME") {
                         if (result.delay[index].delayInSeconds > 300) //delay 5 min
                         {
                             span.style.color = "red";
@@ -92,33 +89,32 @@ var ztmGdanskDepartureBoardParser = {
                             span.style.color = "lime";
                         }
                     }
-                    else
-                    {
+                    else {
                         span.style.color = "yellow";
                     }
-                    span.innerText = result.delay[index].estimatedTime;
-                    
+
                     var temp = result.delay[index].estimatedTime.split(":");
                     var estimatedHours = parseInt(temp[0]);
                     var estimatedMinutes = parseInt(temp[1]);
                     var now = new Date();
                     var estimatedTime = new Date();
-                    if (estimatedHours < now.getHours())
-                    {
+                    if (estimatedHours < now.getHours()) {
                         estimatedTime.setDay(estimatedTime.getDate() + 1);
                         estimatedTime.setHours(estimatedHours);
                         estimatedTime.setMinutes(estimatedMinutes);
                     }
-                    else
-                    {
+                    else {
                         estimatedTime.setHours(estimatedHours);
                         estimatedTime.setMinutes(estimatedMinutes);
                     }
                     var calculatedTimeMinutes = (estimatedTime - now) / (1000 * 60);
 
-                    if (calculatedTimeMinutes < 30) // 30 min
+                    if (calculatedTimeMinutes < 20) // 20 min
                     {
-                        span.innerText += " (" + calculatedTimeMinutes.toString() + " min)";
+                        span.innerText = calculatedTimeMinutes.toString() + " min (" + result.delay[index].estimatedTime + ")";
+                    }
+                    else {
+                        span.innerText = result.delay[index].estimatedTime;
                     }
                     th.appendChild(span);
                 }
@@ -126,7 +122,44 @@ var ztmGdanskDepartureBoardParser = {
                 div2.appendChild(tb3);
                 table.appendChild(div2);
 
-                table.innerHTML += "<div id=\"dispatcherMessageScroll\" style=\"overflow: hidden; display: none; width: 962px;\"><div id=\"scroller\" style=\"position: absolute; left: 444px; top: 0px;\"><p id=\"scroller_content\"></p></div></div>";
+                table.innerHTML += "<div id=\"scroller\"></div>";
+
+                $.getJSON("https://files.xyzgcm.pl/f/xml/bsk.json", function (result) {
+                    if (typeof result.error !== 'undefined') {
+                        console.log(result.error);
+                    }
+                    else {
+                        for (let index = 0; index < result.komunikaty.length; index++) {
+                            scroller = document.getElementById("scroller");
+                            p = document.createElement('p');
+                            p.id = "scroller_content";
+                            p.innerText = result.komunikaty[index].tytul + "\n" + result.komunikaty[index].tresc;
+                            p.style.color = "red";
+                            p.style.fontWeight = "bold";
+                            scroller.appendChild(p);
+                        }
+                    }
+                });
+
+                $.getJSON("https://ckan2.multimediagdansk.pl/displayMessages", function (result) {
+                    if (typeof result.error !== 'undefined') {
+                        console.log(result.error);
+                    }
+                    else {
+                        for (let index = 0; index < result.displaysMsg.length; index++) {
+                            if (result.displaysMsg[index].displayCode == displayCode) {
+                                scroller = document.getElementById("scroller");
+                                p = document.createElement('p');
+                                p.id = "scroller_content";
+                                p.innerText = result.displaysMsg[index].messagePart1 + result.displaysMsg[index].messagePart2;
+                                if (result.displaysMsg[index].msgType == 1) {
+                                    p.style.color = "red";
+                                }
+                                scroller.appendChild(p);
+                            }
+                        }
+                    }
+                });
             }
         });
     }
